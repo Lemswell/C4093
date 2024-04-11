@@ -1,0 +1,153 @@
+import cv2
+import mediapipe as mp
+import csv
+
+#TODO allow paths to be arguments
+video_path = 'climbs/1/red0_straight.mp4'
+#TODO define output folder rather than individual files
+output_csv = 'climbs/1/red0_straight.csv'
+output_video = 'climbs/1/red0_straight_landmarks.mp4'
+
+def get_com_from_landmarks (landmarks):
+    # HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
+
+    com = (0.0, 0.0, 0.0)
+    # average location of points that make up the location of the head
+    # multiply
+    
+    head_coords = ((landmarks[8].x + landmarks[7].x) / 2,
+                       (landmarks[8].y + landmarks[7].y) / 2,
+                       (landmarks[8].z + landmarks[7].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0681*x for x in head_coords])))
+    
+    trunk_coords = ((landmarks[11].x + landmarks[12].x + landmarks[23].x + landmarks[24].x) / 4,
+                        (landmarks[11].y + landmarks[12].y + landmarks[23].y + landmarks[24].y) / 4,
+                        (landmarks[11].z + landmarks[12].z + landmarks[23].z + landmarks[24].z) / 4)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.4302*x for x in trunk_coords])))
+    
+    l_upperarm_coords = ((landmarks[11].x + landmarks[13].x) / 2,
+                         (landmarks[11].y + landmarks[13].y) / 2,
+                         (landmarks[11].z + landmarks[13].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0263*x for x in l_upperarm_coords])))
+    
+    l_forearm_coords = ((landmarks[15].x + landmarks[13].x) / 2,
+                         (landmarks[15].y + landmarks[13].y) / 2,
+                         (landmarks[15].z + landmarks[13].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.015*x for x in l_forearm_coords])))
+    
+    l_hand_coords = ((landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
+                         (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
+                         (landmarks[15].z + landmarks[17].z + landmarks[19].z) / 3)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.00585*x for x in l_hand_coords])))
+    
+    r_upperarm_coords = ((landmarks[12].x + landmarks[14].x) / 2,
+                         (landmarks[12].y + landmarks[14].y) / 2,
+                         (landmarks[12].z + landmarks[14].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0263*x for x in r_upperarm_coords])))
+    
+    r_forearm_coords = ((landmarks[14].x + landmarks[16].x) / 2,
+                         (landmarks[14].y + landmarks[16].y) / 2,
+                         (landmarks[14].z + landmarks[16].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.015*x for x in r_forearm_coords])))
+    
+    r_hand_coords = ((landmarks[16].x + landmarks[18].x + landmarks[20].x) / 3,
+                         (landmarks[16].y + landmarks[18].y + landmarks[20].y) / 3,
+                         (landmarks[16].z + landmarks[18].z + landmarks[20].z) / 3)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.00585*x for x in r_hand_coords])))
+    
+    l_thigh_coords = ((landmarks[25].x + landmarks[23].x) / 2,
+                         (landmarks[25].y + landmarks[23].y) / 2,
+                         (landmarks[25].z + landmarks[23].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.1447*x for x in l_thigh_coords])))
+    
+    l_shank_coords = ((landmarks[25].x + landmarks[27].x) / 2,
+                         (landmarks[25].y + landmarks[27].y) / 2,
+                         (landmarks[25].z + landmarks[27].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0457*x for x in l_shank_coords])))
+    
+    l_foot_coords = ((landmarks[27].x + landmarks[31].x + landmarks[29].x) / 3,
+                         (landmarks[27].y + landmarks[31].y + landmarks[29].y) / 3,
+                         (landmarks[27].z + landmarks[31].z + landmarks[29].z) / 3)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0133*x for x in l_foot_coords])))
+    
+    r_thigh_coords = ((landmarks[24].x + landmarks[26].x) / 2,
+                         (landmarks[24].y + landmarks[26].y) / 2,
+                         (landmarks[24].z + landmarks[26].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.1447*x for x in r_thigh_coords])))
+    
+    r_shank_coords = ((landmarks[26].x + landmarks[28].x) / 2,
+                         (landmarks[26].y + landmarks[28].y) / 2,
+                         (landmarks[26].z + landmarks[28].z) / 2)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0457*x for x in r_shank_coords])))
+    
+    r_foot_coords = ((landmarks[28].x + landmarks[32].x + landmarks[30].x) / 3,
+                         (landmarks[28].y + landmarks[32].y + landmarks[30].y) / 3,
+                         (landmarks[28].z + landmarks[32].z + landmarks[30].z) / 3)
+    com = tuple(map(lambda x, y: x + y, com, tuple([.0133*x for x in r_foot_coords])))
+    
+    return com
+
+def get_force_distribution(contact_points, CoM): #TODO: account for velocity considering previous *active* frames
+    return none
+
+def write_landmarks_to_csv(landmarks, frame_number, csv_data):
+    print(f"Landmark coordinates for frame {frame_number}:")
+    # print(landmarks)
+    for idx, landmark in enumerate(landmarks):
+        print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
+        csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
+    print("\n")
+
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils 
+pose = mp_pose.Pose()
+
+# Open the video file
+cap = cv2.VideoCapture(video_path)
+
+# Save video data for saving vid
+if cap.isOpened():
+    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
+    frameSize = (int(width), int(height))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG') 
+video_out = cv2.VideoWriter(output_video, fourcc, fps, frameSize)
+
+# data for csv
+frame_number = 0
+csv_data = []
+
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Convert the frame to RGB
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # Process the frame with MediaPipe Pose
+    result = pose.process(frame_rgb)
+
+    # Draw the pose landmarks on the frame
+    if result.pose_landmarks:
+        mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS) # https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.drawingutils
+        #TODO: add visualisation of CoM
+        # Add the landmark coordinates to the list and print them
+        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data)
+
+    # Display the frame
+    cv2.imshow('MediaPipe Pose', frame)
+    
+    # save frame to exported video
+    video_out.write(frame)
+    
+    # Exit if 'q' key is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+    frame_number += 1
+    
+video_out.release()
+cap.release()
+cv2.destroyAllWindows()
