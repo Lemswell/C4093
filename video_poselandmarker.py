@@ -97,7 +97,7 @@ def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given
 
     # problem cases:
         # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
-        # contact surface instead of point: chimneying
+        # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
     # upward force of contact points should be exactly the same as the weight of the subject 
@@ -105,7 +105,7 @@ def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given
     # the displacement of CoM results in torque around contact points, this 
 
     # TODO account for velocity considering previous *active* frames
-    return none
+    return 0
 
 def write_landmarks_to_csv(landmarks, frame_number, csv_data):
     print(f"Landmark coordinates for frame {frame_number}:")
