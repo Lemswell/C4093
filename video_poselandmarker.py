@@ -87,7 +87,24 @@ def get_com_from_landmarks (landmarks):
     
     return com
 
-def get_force_distribution(contact_points, CoM): #TODO: account for velocity considering previous *active* frames
+def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given as to a still subject.
+    
+    # TODO the way the force is distributed is estimated through contactpoints position and direction relative to the CoM and the joining landmark to the trunk (11,12,23,24) 
+        # potential sol:
+        # - the further away a contact_point is from CoM, the less responsible it is for holding the weight.   
+            # this is based on the angle between (TODO: either trunk or CoM) and contact_point, with an arbitrary number to scale the distribution
+        # - assume contact points below CoM push weight up by pushing away from (trunk or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
+
+    # problem cases:
+        # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
+        # contact surface instead of point: chimneying
+        # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
+
+    # upward force of contact points should be exactly the same as the weight of the subject 
+    
+    # the displacement of CoM results in torque around contact points, this 
+
+    # TODO account for velocity considering previous *active* frames
     return none
 
 def write_landmarks_to_csv(landmarks, frame_number, csv_data):
