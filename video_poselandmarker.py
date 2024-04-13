@@ -89,9 +89,11 @@ def get_com_from_landmarks (landmarks):
 
 def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given as to a still subject.
     
+    # TODO need to scale subjects with distance to measure force I think
+
     # TODO the way the force is distributed is estimated through contactpoints position and direction relative to the CoM and the joining landmark to the trunk (11,12,23,24) 
         # potential sol:
-        # - the further away a contact_point is from CoM, the less responsible it is for holding the weight.   
+        # - the further away a contact_point is from CoM y and z, the less responsible it is for holding the weight. (x value displacement should either have very little to no influence on weight dist)
             # this is based on the angle between (TODO: either trunk or CoM) and contact_point, with an arbitrary number to scale the distribution
         # - assume contact points below CoM push weight up by pushing away from (trunk or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
 
