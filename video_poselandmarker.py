@@ -86,31 +86,39 @@ def get_com_from_landmarks (landmarks):
     
     return com
 
-def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given as to a still subject.
-    
-    # TODO need to scale subjects with distance to measure force I think
+def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is given as to a still subject.
+    # FINDING ACTUAL DISTRIBUTION: the further away a contact_point is from CoM x and z, the less responsible it is for holding the weight (counteracting the force of gravity). 
+        # y value displacement should either have very little to no influence on weight dist (maybe closer horizontally means slightly less weight distributed to it).
+        # the weight distribution should be based on the difference between contact point distances from the CoM (comparing CoM-contact_point[0] to CoM-contact_point[1] vectors.
 
-    # TODO the way the force is distributed is estimated through contactpoints position and direction relative to the CoM and the joining landmark to the trunk (11,12,23,24) 
-        # potential sol:
-        # - FINDING ACTUAL DISTRIBUTION: the further away a contact_point is from CoM x and z, the less responsible it is for holding the weight (counteracting the force of gravity). 
-            # y value displacement should either have very little to no influence on weight dist (maybe closer horizontally means slightly less weight distributed to it)
-            # the weight distribution should be based on the difference between contact point distances from the CoM (comparing CoM-contact_point[0] to CoM-contact_point[1] vectors.
-        # - ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
-            # assume contact points below CoM push weight up by pushing away from (trunk or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
-            # force is given by the following equation: Force * cos(angle from point to trunk) = assined weight distribution
-        # - ADD EXTRA FORCR FROM TORQUE:
-            # should be more applicable when contact points are not on opposite sides (x, z) of CoM
-        # - ADD EXTRA FORCE BASED ON VELOCITY OF CoM
     # problem cases:
-        # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
-    # upward force of contact points should be exactly the same as the weight of the subject 
     
-    # the displacement of CoM results in torque around contact points, this 
 
-    # TODO account for velocity considering previous *active* frames
+    # TODO return percentage weight dist per contact point
+    return 0
+
+def contact_point_to_force_vec(contact_points, CoM):
+    # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
+            # assume contact points below CoM push weight up by pushing away from (trunk (11,12,23,24)  or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
+            # equation: Force * cos(angle from point to trunk) = assined weight distribution
+
+    # problem cases:
+        # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
+        # contact surface: chimneying
+    return 0
+
+def add_torque_to_total_force(contact_points, CoM):
+    # ADD FORCE FROM TORQUE:
+        # should be more applicable when contact points are not on opposite sides (x, z) of CoM
+        # equation:
+    return 0
+        
+def add_motion_to_force(contact_points, CoM):
+    # ADD FORCE FOR MOVEMENT:
+        # TODO account for velocity considering previous *active* frames
     return 0
 
 def write_landmarks_to_csv(landmarks, frame_number, csv_data):
