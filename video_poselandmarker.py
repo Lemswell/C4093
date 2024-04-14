@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import csv
+import math
 
 #TODO allow paths to be arguments
 video_path = 'climbs/1/red0_straight.mp4'
@@ -9,11 +10,9 @@ output_csv = 'climbs/1/red0_straight.csv'
 output_video = 'climbs/1/red0_straight_landmarks.mp4'
 
 def get_com_from_landmarks (landmarks):
-    # HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
+    # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
 
     com = (0.0, 0.0, 0.0)
-    # average location of points that make up the location of the head
-    # multiply
     
     head_coords = ((landmarks[8].x + landmarks[7].x) / 2,
                        (landmarks[8].y + landmarks[7].y) / 2,
@@ -93,10 +92,15 @@ def get_force_distribution(contact_points, CoM): # placeholder weight 1 is given
 
     # TODO the way the force is distributed is estimated through contactpoints position and direction relative to the CoM and the joining landmark to the trunk (11,12,23,24) 
         # potential sol:
-        # - the further away a contact_point is from CoM y and z, the less responsible it is for holding the weight. (x value displacement should either have very little to no influence on weight dist)
-            # this is based on the angle between (TODO: either trunk or CoM) and contact_point, with an arbitrary number to scale the distribution
-        # - assume contact points below CoM push weight up by pushing away from (trunk or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
-
+        # - FINDING ACTUAL DISTRIBUTION: the further away a contact_point is from CoM x and z, the less responsible it is for holding the weight (counteracting the force of gravity). 
+            # y value displacement should either have very little to no influence on weight dist (maybe closer horizontally means slightly less weight distributed to it)
+            # the weight distribution should be based on the difference between contact point distances from the CoM (comparing CoM-contact_point[0] to CoM-contact_point[1] vectors.
+        # - ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
+            # assume contact points below CoM push weight up by pushing away from (trunk or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
+            # force is given by the following equation: Force * cos(angle from point to trunk) = assined weight distribution
+        # - ADD EXTRA FORCR FROM TORQUE:
+            # should be more applicable when contact points are not on opposite sides (x, z) of CoM
+        # - ADD EXTRA FORCE BASED ON VELOCITY OF CoM
     # problem cases:
         # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
         # contact surface: chimneying
