@@ -102,7 +102,8 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
 
 def contact_point_to_force_vec(contact_points, CoM):
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
-            # assume contact points below CoM push weight up by pushing away from (trunk (11,12,23,24)  or CoM), whereas points above pull weight up by pulling towards (trunk or CoM)
+            # assume contact points below CoM push weight up by pushing away from either trunk (11,12,23,24) or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
+            # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
             # equation: Force * cos(angle from point to trunk) = assined weight distribution
 
     # problem cases:
