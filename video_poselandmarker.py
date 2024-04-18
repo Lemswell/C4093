@@ -162,7 +162,7 @@ def write_landmarks_to_csv(landmarks, frame_number, csv_data):
 
     # ADD CoM TO CSV
     CoM = get_com_from_landmarks(landmarks)
-    print(f"{"CENTER_OF_MASS"}: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+    print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
     csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
 
     print("\n")
@@ -206,7 +206,8 @@ while cap.isOpened():
         write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data)
 
     # Display the frame
-    # cv2.imshow('MediaPipe Pose', frame)
+    window_resized = cv2.resize(frame, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)/3), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)/3))) # Resize image
+    cv2.imshow('MediaPipe Pose', window_resized)
     
     # save frame to exported video
     video_out.write(frame)
