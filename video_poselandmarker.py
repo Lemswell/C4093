@@ -9,21 +9,21 @@ import shutil
 
 # input path as argument
 input_source = sys.argv[1]
-if(not os.path.ispath(input_source)):
+if(not os.path.exists(input_source)):
     print("argument is not a path")
     sys.exit()
 # define output folder rather than individual files
-output_destination = os.path.splitext(input_source) + '_test' # name of output folder
-if(os.path.ispath(output_destination)): # replace dst dir if already exists
+output_destination = os.path.splitext(input_source)[0] + '_test' # name of output folder
+if(os.path.exists(output_destination)): # replace dst dir if already exists
     try:
         shutil.rmtree(output_destination)
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
 os.mkdir(output_destination)
-output_csv = os.path.join(output_destination, input_source + '.csv')
-output_video = os.path.join(output_destination, input_source + '_landmarks.mp4')
+output_csv = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '.csv')
+output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
 
-def get_com_from_landmarks (landmarks): # output: tuple (prob shoulda been list but ehh)
+def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list but ehh)
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
 
     com = (0.0, 0.0, 0.0)
@@ -109,14 +109,14 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
-    # assume contact_points is list of list
-    result = contact_point
+    # ASSUME contact_points is list of list
+    result = contact_points
 
     # get distance between contact_points and CoM (x and z values)
     distance_values = []
-    for contact_point in contact_points:
-        distance = math.sqrt(pow(contact_point[0] - CoM[0], 2) + pow(contact_point[2] - CoM[2], 2))
+    for contact_point in result:
         # distance betwen com and contact_point
+        distance = math.sqrt(pow(contact_point[0] - CoM[0], 2) + pow(contact_point[2] - CoM[2], 2))
         distance_values.append(distance)
 
     # inverse distance values
@@ -159,6 +159,12 @@ def write_landmarks_to_csv(landmarks, frame_number, csv_data):
     for idx, landmark in enumerate(landmarks):
         print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
         csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
+
+    # ADD CoM TO CSV
+    CoM = get_com_from_landmarks(landmarks)
+    print(f"{"CENTER_OF_MASS"}: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+    csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
+
     print("\n")
 
 mp_pose = mp.solutions.pose
@@ -195,12 +201,12 @@ while cap.isOpened():
     # Draw the pose landmarks on the frame
     if result.pose_landmarks:
         mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS) # https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.drawingutils
-        #TODO: add visualisation of CoM
+        # TODO add visualisation of CoM
         # Add the landmark coordinates to the list and print them
         write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data)
 
     # Display the frame
-    cv2.imshow('MediaPipe Pose', frame)
+    # cv2.imshow('MediaPipe Pose', frame)
     
     # save frame to exported video
     video_out.write(frame)
@@ -214,3 +220,9 @@ while cap.isOpened():
 video_out.release()
 cap.release()
 cv2.destroyAllWindows()
+
+
+with open(output_csv, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'landmark', 'x', 'y', 'z'])
+    csv_writer.writerows(csv_data)
