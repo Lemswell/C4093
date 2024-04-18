@@ -5,10 +5,11 @@ import math
 import sys
 import os
 import shutil
+# import argparse # import for more comprehensive usage of script
 
 # input path as argument
 input_source = sys.argv[1]
-if(!os.path.ispath(input_source)):
+if(not os.path.ispath(input_source)):
     print("argument is not a path")
     sys.exit()
 # define output folder rather than individual files
@@ -108,7 +109,9 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
-    # get 
+    # get distance between contact_points and CoM (x and z values)
+    
+    
 
     # TODO return percentage weight dist per contact point
     return 0
