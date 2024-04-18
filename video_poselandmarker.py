@@ -110,6 +110,7 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
     # assume contact_points is list of list
+    result = contact_point
 
     # get distance between contact_points and CoM (x and z values)
     distance_values = []
@@ -122,11 +123,13 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
     for distance in distance_values:
         distance = 1/distance
 
-    
-    
+    # turn inverse distance values to percentage (weight distribution)
+    total_distances = sum(distance_values)
+    for index, distance in enumerate(distance_values):
+        distance_values[index] = distance/total_distances
+        result[index].append(distance_values[index])
 
-    
-    return 0
+    return result
 
 def contact_point_to_force_vec(contact_points, CoM):
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
