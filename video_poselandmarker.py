@@ -2,12 +2,25 @@ import cv2
 import mediapipe as mp
 import csv
 import math
+import sys
+import os
+import shutil
 
-#TODO allow paths to be arguments
-video_path = 'climbs/1/red0_straight.mp4'
-#TODO define output folder rather than individual files
-output_csv = 'climbs/1/red0_straight.csv'
-output_video = 'climbs/1/red0_straight_landmarks.mp4'
+# input path as argument
+input_source = sys.argv[1]
+if(!os.path.ispath(input_source)):
+    print("argument is not a path")
+    sys.exit()
+# define output folder rather than individual files
+output_destination = os.path.splitext(input_source) + '_test' # name of output folder
+if(os.path.ispath(output_destination)): # replace dst dir if already exists
+    try:
+        shutil.rmtree(mydir)
+    except OSError as e:
+        print("Error: %s - %s." % (e.filename, e.strerror))
+os.mkdir(output_destination)
+output_csv = os.path.join(output_destination, input_source + '.csv')
+output_video = os.path.join(output_destination, input_source + '_landmarks.mp4')
 
 def get_com_from_landmarks (landmarks):
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
@@ -95,7 +108,7 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
-    
+    # get 
 
     # TODO return percentage weight dist per contact point
     return 0
