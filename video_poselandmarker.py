@@ -16,14 +16,14 @@ if(not os.path.ispath(input_source)):
 output_destination = os.path.splitext(input_source) + '_test' # name of output folder
 if(os.path.ispath(output_destination)): # replace dst dir if already exists
     try:
-        shutil.rmtree(mydir)
+        shutil.rmtree(output_destination)
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
 os.mkdir(output_destination)
 output_csv = os.path.join(output_destination, input_source + '.csv')
 output_video = os.path.join(output_destination, input_source + '_landmarks.mp4')
 
-def get_com_from_landmarks (landmarks):
+def get_com_from_landmarks (landmarks): # output: tuple (prob shoulda been list but ehh)
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
 
     com = (0.0, 0.0, 0.0)
@@ -109,11 +109,23 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
+    # assume contact_points is list of list
+
     # get distance between contact_points and CoM (x and z values)
+    distance_values = []
+    for contact_point in contact_points:
+        distance = math.sqrt(pow(contact_point[0] - CoM[0], 2) + pow(contact_point[2] - CoM[2], 2))
+        # distance betwen com and contact_point
+        distance_values.append(distance)
+
+    # inverse distance values
+    for distance in distance_values:
+        distance = 1/distance
+
     
     
 
-    # TODO return percentage weight dist per contact point
+    
     return 0
 
 def contact_point_to_force_vec(contact_points, CoM):
@@ -151,7 +163,7 @@ mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose()
 
 # Open the video file
-cap = cv2.VideoCapture(video_path)
+cap = cv2.VideoCapture(input_source)
 
 # Save video data for saving vid
 if cap.isOpened():
