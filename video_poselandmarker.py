@@ -153,7 +153,7 @@ def add_motion_to_force(contact_points, CoM):
         # TODO account for velocity considering previous *active* frames
     return 0
 
-def write_landmarks_to_csv(landmarks, frame_number, csv_data):
+def write_landmarks_to_csv(landmarks, frame_number, csv_data, CoM):
     print(f"Landmark coordinates for frame {frame_number}:")
     # print(landmarks)
     for idx, landmark in enumerate(landmarks):
@@ -161,7 +161,6 @@ def write_landmarks_to_csv(landmarks, frame_number, csv_data):
         csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
 
     # ADD CoM TO CSV
-    CoM = get_com_from_landmarks(landmarks)
     print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
     csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
 
@@ -188,6 +187,8 @@ frame_number = 0
 csv_data = []
 
 while cap.isOpened():
+    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
+    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
     ret, frame = cap.read()
     if not ret:
         break
@@ -201,12 +202,15 @@ while cap.isOpened():
     # Draw the pose landmarks on the frame
     if result.pose_landmarks:
         mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS) # https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.drawingutils
+        CoM = get_com_from_landmarks(result.pose_landmarks.landmark)
+        CoM_coord = (int(CoM[0]*width),int(CoM[1]*height))
         # TODO add visualisation of CoM
         # Add the landmark coordinates to the list and print them
-        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data)
+        frame = cv2.circle(frame, CoM_coord, radius=4, color=(0, 255, 0), thickness=-1)
+        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
 
     # Display the frame
-    window_resized = cv2.resize(frame, (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)/3), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)/3))) # Resize image
+    window_resized = cv2.resize(frame, (int(width/3), int(height/3))) # Resize image
     cv2.imshow('MediaPipe Pose', window_resized)
     
     # save frame to exported video
