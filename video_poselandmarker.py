@@ -167,7 +167,11 @@ def write_landmarks_to_csv(landmarks, frame_number, csv_data):
 
     print("\n")
 
-mp_pose = mp.solutions.pose
+mp_pose = mp.solutions.pose # gots to replace
+base_options = mp.tasks.BaseOptions(model_asset_path='pose_landmarker_heavy.task')
+options = mp.tasks.vision.PoseLandmarkerOptions(
+    base_options= base_options, # using model with a spcified path
+    running_mode=mp.tasks.vision.RunningMode.VIDEO)
 mp_drawing = mp.solutions.drawing_utils 
 pose = mp_pose.Pose()
 
