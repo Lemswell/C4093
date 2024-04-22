@@ -201,12 +201,13 @@ while cap.isOpened():
 
     # Draw the pose landmarks on the frame
     if result.pose_landmarks:
+        # Add the landmark coordinates to image
         mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS) # https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.drawingutils
+        # Add the CoM to to image
         CoM = get_com_from_landmarks(result.pose_landmarks.landmark)
-        CoM_coord = (int(CoM[0]*width),int(CoM[1]*height))
-        # TODO add visualisation of CoM
-        # Add the landmark coordinates to the list and print them
+        CoM_coord = (int(CoM[0]*width),int(CoM[1]*height))        
         frame = cv2.circle(frame, CoM_coord, radius=4, color=(0, 255, 0), thickness=-1)
+        # Add the landmark coordinates to the list and print them
         write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
 
     # Display the frame
