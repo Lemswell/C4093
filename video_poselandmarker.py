@@ -110,26 +110,26 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
     # ASSUME contact_points is list of list
-    result = contact_points
 
     # get distance between contact_points and CoM (x and z values)
     distance_values = []
-    for contact_point in result:
+    for contact_point in contact_points:
         # distance betwen com and contact_point
         distance = math.sqrt(pow(contact_point[0] - CoM[0], 2) + pow(contact_point[2] - CoM[2], 2))
         distance_values.append(distance)
 
-    # inverse distance values
+    # inverses distance values
     for distance in distance_values:
         distance = 1/distance
 
-    # turn inverse distance values to percentage (weight distribution)
-    total_distances = sum(distance_values)
-    for index, distance in enumerate(distance_values):
-        distance_values[index] = distance/total_distances
-        result[index].append(distance_values[index])
+    # turn inverse distance values to percentage (weight distribution) and add to return value
+    contact_point_weight_distribution = []
+    sum_of_inverse_distances = sum(distance_values)
+    for inverse_distance in distance_values:
+        weight_responsiblity = inverse_distance/sum_of_inverse_distances
+        contact_point_weight_distribution.append(weight_responsiblity)
 
-    return result
+    return contact_point_weight_distribution
 
 def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the angle between ab and ac.
     # get vectors ab and ac
@@ -143,23 +143,34 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
     acnorm = (ac[0] / acmag, ac[1] / acmag, ac[2] / acmag)
 
     # calculate dot product
-    res = ab[0] * ac[0] + ab[1] * ac[1] + ab[2] * ac[2]
+    res = abnorm[0] * acnorm[0] + abnorm[1] * acnorm[1] + abnorm[2] * acnorm[2]
 
     # find angle
     angle = math.acos(res)
 
     return angle
 
-def contact_point_to_force_vec(contact_points, CoM):
+def get_force_for_contact_point(contact_points, CoM): # does not include force that accelerates 
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
-            # assume contact points below CoM push weight up by pushing away from either trunk (11,12,23,24) or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
-            # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
-            # equation: Force * cos(angle from point to trunk) = assined weight distribution
+        # assume contact points below CoM push weight up by pushing away from either trunk (11,12,23,24) or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
+        # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
+        # equation: Force * cos(angle from point to trunk) = assined weight distribution
 
     # problem cases:
         # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
         # contact surface: chimneying
-    return 0
+
+    weight_dist = get_weight_distribution(contact_points)
+    
+    result = []
+
+    for index, contact_point in enumerate(contact_points):
+        third_point = (contact_point[0], CoM[1], contact_point[2]) 
+        angle = find_angle_threepoints(contact_point[:3], CoM, third_point)
+        force = weight_dist[index]/math.cos[angle]
+        result.append(force)
+    
+    return result
 
 def add_torque_to_total_force(contact_points, CoM):
     # ADD FORCE FROM TORQUE:
