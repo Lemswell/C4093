@@ -131,6 +131,25 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
 
     return result
 
+def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the angle between ab and ac.
+    # get vectors ab and ac
+    ab = (b[0] - a[0], a[1] - b[1], b[2] - a[2])
+    ac = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
+
+    # get vector magnitude and normal
+    abmag = math.sqrt(pow(ab[0], 2) + pow(ab[1], 2) + pow(ab[3], 2))
+    abnorm = (ab[0] / abmag, ab[1] / abmag, ab[2] / abmag)
+    acmag = math.sqrt(pow(ac[0], 2) + pow(ac[1], 2) + pow(ac[3], 2))
+    acnorm = (ac[0] / acmag, ac[1] / acmag, ac[2] / acmag)
+
+    # calculate dot product
+    res = ab[0] * ac[0] + ab[1] * ac[1] + ab[2] * ac[2]
+
+    # find angle
+    angle = math.acos(res)
+
+    return angle
+
 def contact_point_to_force_vec(contact_points, CoM):
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
             # assume contact points below CoM push weight up by pushing away from either trunk (11,12,23,24) or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
