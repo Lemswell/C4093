@@ -24,51 +24,7 @@ os.mkdir(output_destination)
 output_csv = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '.csv')
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
 
-def check_limb_held():
-    # how do I get contact points? 
-    # stillness aproximates held
-    # how to check for stillness?
-    # check for only hands and feet (only hands and feet will be called limbs)
-    # check each limb for periods of time with low velocity
-    # for each frame where acceleration is below certain threshold (threshold tbd)
-    # record if average loc remains in a certain radius of this loc (defined by landmarks) (if yes, then this is held period, if no then not held)
-
-
-    # get velocity per limb (imageunit/frame)
-    # find low points of velocity
-    # test these points with testing method for stillness refered to above
-
-
-
-
-    return
-
-def get_limb_velocity(landmark_history, fps):
-    
-    
-    # output
-    # indicies: lh, rh, lf, rf
-    # list[x]: x, y, z, dia, velocity
-
-    if len(landmark_history) < 2:
-        return
-    
-    if (landmark_history[-1][0] - landmark_history[-2][0]) > fps/2:
-        return
-
-    persec = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
-
-    limbs_prev = get_limb_coord(landmark_history[-2][2])
-    limbs_curr = get_limb_coord(landmark_history[-1][2])
-    limb_info = []
-
-    for idx, limb in enumerate(limbs_curr):
-        dist = get_distance_between_two_points(limbs_prev[idx], limbs_curr[idx])
-        
-        limb_info.append(limb.append(dist / persec))
-    
-    return limb_info
-
+# UTILS
 def get_distance_between_two_points(a, b):
     # x,y,z
     # 0,1,2
@@ -77,7 +33,29 @@ def get_distance_between_two_points(a, b):
     
     return distance
 
-def get_limb_coord(landmarks): 
+def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the angle between ab and ac.
+    # COULD RESTRUCTURE TO FIND VECTOR!
+
+    # get vectors ab and ac
+    ab = (b[0] - a[0], a[1] - b[1], b[2] - a[2])
+    ac = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
+
+    # get vector magnitude and normal
+    abmag = math.sqrt(pow(ab[0], 2) + pow(ab[1], 2) + pow(ab[3], 2))
+    abnorm = (ab[0] / abmag, ab[1] / abmag, ab[2] / abmag)
+    acmag = math.sqrt(pow(ac[0], 2) + pow(ac[1], 2) + pow(ac[3], 2))
+    acnorm = (ac[0] / acmag, ac[1] / acmag, ac[2] / acmag)
+
+    # calculate dot product
+    res = abnorm[0] * acnorm[0] + abnorm[1] * acnorm[1] + abnorm[2] * acnorm[2]
+
+    # find angle
+    angle = math.acos(res)
+
+    return angle
+
+# CHECK CONTACT POINT HELD
+def get_limb_coord(landmarks): # finds limb coords and a diameter of where the limb is in
     limbs = []
 
     max = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
@@ -118,6 +96,53 @@ def get_limb_coord(landmarks):
     
     return limbs
 
+def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of image) per second
+    # output
+    # indicies: lh, rh, lf, rf
+    # list[x]: x, y, z, dia, velocity
+
+    if len(landmark_history) < 2:
+        return
+    
+    if (landmark_history[-1][0] - landmark_history[-2][0]) > fps/2:
+        return
+
+    persec = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
+
+    limbs_prev = get_limb_coord(landmark_history[-2][2])
+    limbs_curr = get_limb_coord(landmark_history[-1][2])
+    limb_info = []
+
+    for idx, limb in enumerate(limbs_curr):
+        dist = get_distance_between_two_points(limbs_prev[idx], limbs_curr[idx])
+        
+        limb_info.append(limb.append(dist / persec))
+    
+    return limb_info
+
+def check_limb_held(landmark_history):
+    # how do I get contact points? 
+    # stillness aproximates held
+    # how to check for stillness?
+    # check for only hands and feet (only hands and feet will be called limbs)
+    # check each limb for periods of time with low velocity
+    # for each frame where acceleration is below certain threshold (threshold tbd)
+    # record if average loc remains in a certain radius of this loc (defined by landmarks) (if yes, then this is held period, if no then not held)
+
+
+    # get velocity per limb (imageunit/frame)
+    # find low points of velocity
+    # test these points with testing method for stillness refered to above
+
+    velocity_lim = 0 # wip
+
+
+
+
+
+    return
+
+# IDENTIFTING ACTING FORCES
 def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list but ehh)
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
 
@@ -226,28 +251,7 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
 
     return contact_point_weight_distribution
 
-def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the angle between ab and ac.
-    # COULD RESTRUCTURE TO FIND VECTOR!
-
-    # get vectors ab and ac
-    ab = (b[0] - a[0], a[1] - b[1], b[2] - a[2])
-    ac = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
-
-    # get vector magnitude and normal
-    abmag = math.sqrt(pow(ab[0], 2) + pow(ab[1], 2) + pow(ab[3], 2))
-    abnorm = (ab[0] / abmag, ab[1] / abmag, ab[2] / abmag)
-    acmag = math.sqrt(pow(ac[0], 2) + pow(ac[1], 2) + pow(ac[3], 2))
-    acnorm = (ac[0] / acmag, ac[1] / acmag, ac[2] / acmag)
-
-    # calculate dot product
-    res = abnorm[0] * acnorm[0] + abnorm[1] * acnorm[1] + abnorm[2] * acnorm[2]
-
-    # find angle
-    angle = math.acos(res)
-
-    return angle
-
-def get_force_for_contact_point(contact_points, CoM): # does not include force that accelerates 
+def get_force_for_contact_point(contact_points, CoM): # taking into consideratio the direction of force applied 
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
         # assume contact points below CoM push weight up by pushing away or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
         # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
