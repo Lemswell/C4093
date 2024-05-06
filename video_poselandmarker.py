@@ -24,7 +24,7 @@ os.mkdir(output_destination)
 output_csv = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '.csv')
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
 
-def get_contact_points(csv):
+def check_limb_held():
     # how do I get contact points? 
     # stillness aproximates held
     # how to check for stillness?
@@ -37,11 +37,86 @@ def get_contact_points(csv):
     # get velocity per limb (imageunit/frame)
     # find low points of velocity
     # test these points with testing method for stillness refered to above
+
+
+
+
+    return
+
+def get_limb_velocity(landmark_history, fps):
     
+    
+    # output
+    # indicies: lh, rh, lf, rf
+    # list[x]: x, y, z, dia, velocity
 
+    if len(landmark_history) < 2:
+        return
+    
+    if (landmark_history[-1][0] - landmark_history[-2][0]) > fps/2:
+        return
 
+    persec = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
 
-    return 0
+    limbs_prev = get_limb_coord(landmark_history[-2][2])
+    limbs_curr = get_limb_coord(landmark_history[-1][2])
+    limb_info = []
+
+    for idx, limb in enumerate(limbs_curr):
+        dist = get_distance_between_two_points(limbs_prev[idx], limbs_curr[idx])
+        
+        limb_info.append(limb.append(dist / persec))
+    
+    return limb_info
+
+def get_distance_between_two_points(a, b):
+    # x,y,z
+    # 0,1,2
+
+    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    
+    return distance
+
+def get_limb_coord(landmarks): 
+    limbs = []
+
+    max = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
+                get_distance_between_two_points([landmarks[19].x, landmarks[19].y, landmarks[19].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
+                get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[19].x, landmarks[19].y, landmarks[19].z]))
+    l_hand_coords = [(landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
+                         (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
+                         (landmarks[15].z + landmarks[17].z + landmarks[19].z) / 3,
+                         max]
+    limbs.append(l_hand_coords)
+
+    max = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
+                get_distance_between_two_points([landmarks[20].x, landmarks[20].y, landmarks[20].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
+                get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[20].x, landmarks[20].y, landmarks[20].z]))
+    r_hand_coords = [(landmarks[16].x + landmarks[18].x + landmarks[20].x) / 3,
+                         (landmarks[16].y + landmarks[18].y + landmarks[20].y) / 3,
+                         (landmarks[16].z + landmarks[18].z + landmarks[20].z) / 3,
+                         max]
+    limbs.append(r_hand_coords)
+
+    max = max(get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
+                get_distance_between_two_points([landmarks[29].x, landmarks[29].y, landmarks[29].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
+                get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[29].x, landmarks[29].y, landmarks[29].z]))
+    l_foot_coords = [(landmarks[27].x + landmarks[31].x + landmarks[29].x) / 3,
+                         (landmarks[27].y + landmarks[31].y + landmarks[29].y) / 3,
+                         (landmarks[27].z + landmarks[31].z + landmarks[29].z) / 3,
+                         max]
+    limbs.append(l_foot_coords)
+
+    max = max(get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
+                get_distance_between_two_points([landmarks[32].x, landmarks[32].y, landmarks[32].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
+                get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[32].x, landmarks[32].y, landmarks[32].z]))
+    r_foot_coords = [(landmarks[28].x + landmarks[32].x + landmarks[30].x) / 3,
+                         (landmarks[28].y + landmarks[32].y + landmarks[30].y) / 3,
+                         (landmarks[28].z + landmarks[32].z + landmarks[30].z) / 3,
+                         max]
+    limbs.append(r_foot_coords)
+    
+    return limbs
 
 def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list but ehh)
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
@@ -236,7 +311,9 @@ video_out = cv2.VideoWriter(output_video, fourcc, fps, frameSize)
 
 # data for csv
 frame_number = 0
-csv_data = []
+# csv_data = []
+landmark_history = []
+fps = cap.get(cv2.CAP_PROP_FPS)
 
 while cap.isOpened():
     width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
@@ -259,11 +336,16 @@ while cap.isOpened():
         CoM = get_com_from_landmarks(result.pose_landmarks.landmark)
         CoM_coord = (int(CoM[0]*width),int(CoM[1]*height))        
         frame = cv2.circle(frame, CoM_coord, radius=4, color=(0, 255, 0), thickness=-1)
+        # add to landmark_history
+        landmark_history.append([frame_number, CoM, result.pose_landmarks.landmark])
+        limb_velocity = get_limb_velocity(landmark_history, fps)
+        if limb_velocity:
+            landmark_history[-1].append(limb_velocity)
         # Add the landmark coordinates to the list and print them
-        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
+        # write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
 
     # Display the frame
-    window_resized = cv2.resize(frame, (int(width/3), int(height/3))) # Resize image
+    window_resized = cv2.resize(frame, (int(width/2.3), int(height/2.3))) # Resize image
     cv2.imshow('MediaPipe Pose', window_resized)
     
     # save frame to exported video
@@ -282,5 +364,6 @@ cv2.destroyAllWindows()
 
 with open(output_csv, 'w', newline='') as csvfile:
     csv_writer = csv.writer(csvfile)
-    csv_writer.writerow(['frame_number', 'landmark', 'x', 'y', 'z'])
-    csv_writer.writerows(csv_data)
+    # csv_writer.writerow(['frame_number', 'landmark', 'x', 'y', 'z'])
+    # csv_writer.writerows(csv_data)
+    csv_writer.writerows(landmark_history)
