@@ -17,11 +17,31 @@ output_destination = os.path.splitext(input_source)[0] + '_test' # name of outpu
 if(os.path.exists(output_destination)): # replace dst dir if already exists
     try:
         shutil.rmtree(output_destination)
+        print("removing folder: " + output_destination)
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
 os.mkdir(output_destination)
 output_csv = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '.csv')
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
+
+def get_contact_points(csv):
+    # how do I get contact points? 
+    # stillness aproximates held
+    # how to check for stillness?
+    # check for only hands and feet (only hands and feet will be called limbs)
+    # check each limb for periods of time with low velocity
+    # for each frame where acceleration is below certain threshold (threshold tbd)
+    # record if average loc remains in a certain radius of this loc (defined by landmarks) (if yes, then this is held period, if no then not held)
+
+
+    # get velocity per limb (imageunit/frame)
+    # find low points of velocity
+    # test these points with testing method for stillness refered to above
+    
+
+
+
+    return 0
 
 def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list but ehh)
     # CENTER OF MASS IS GIVEN BY: HEAD .0681 + TRUNK .4302 + ARMS 2*(UPPERARM .0263 + FOREARM .015 + HAND .00585) + LEGS 2*(THIGH .1447 + SHANK .0457 + FOOT .0133)
@@ -132,6 +152,8 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
     return contact_point_weight_distribution
 
 def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the angle between ab and ac.
+    # COULD RESTRUCTURE TO FIND VECTOR!
+
     # get vectors ab and ac
     ab = (b[0] - a[0], a[1] - b[1], b[2] - a[2])
     ac = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
@@ -152,7 +174,7 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
 
 def get_force_for_contact_point(contact_points, CoM): # does not include force that accelerates 
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
-        # assume contact points below CoM push weight up by pushing away from either trunk (11,12,23,24) or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
+        # assume contact points below CoM push weight up by pushing away or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
         # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
         # equation: Force * cos(angle from point to trunk) = assined weight distribution
 
