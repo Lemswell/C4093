@@ -130,7 +130,7 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
 
     return limb_info
 
-def check_limb_held(landmark_history, fps):
+def check_limb_held(landmark_history, fps): # TODO
     # how do I get contact points? 
     # stillness aproximates held
     # how to check for stillness?
@@ -290,13 +290,13 @@ def get_force_for_contact_point(contact_points, CoM): # taking into consideratio
     
     return result
 
-def add_torque_to_total_force(contact_points, CoM):
+def add_torque_to_total_force(contact_points, CoM): # TODO
     # ADD FORCE FROM TORQUE:
         # should be more applicable when contact points are not on opposite sides (x, z) of CoM
         # equation:
     return 0
         
-def add_motion_to_force(contact_points, CoM):
+def add_motion_to_force(contact_points, CoM): # TODO
     # ADD FORCE FOR MOVEMENT:
         # TODO account for velocity considering previous *active* frames
     return 0
