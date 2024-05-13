@@ -58,40 +58,40 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
 def get_limb_coord(landmarks): # finds limb coords and a diameter of where the limb is in
     limbs = []
 
-    max = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
+    diameter = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
                 get_distance_between_two_points([landmarks[19].x, landmarks[19].y, landmarks[19].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
                 get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[19].x, landmarks[19].y, landmarks[19].z]))
     l_hand_coords = ['lh', [(landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
                             (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
                             (landmarks[15].z + landmarks[17].z + landmarks[19].z) / 3 ],
-                        max]
+                        diameter]
     limbs.append(l_hand_coords)
 
-    max = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
+    diameter = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
                 get_distance_between_two_points([landmarks[20].x, landmarks[20].y, landmarks[20].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
                 get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[20].x, landmarks[20].y, landmarks[20].z]))
     r_hand_coords = ['rh', [(landmarks[16].x + landmarks[18].x + landmarks[20].x) / 3,
                             (landmarks[16].y + landmarks[18].y + landmarks[20].y) / 3,
                             (landmarks[16].z + landmarks[18].z + landmarks[20].z) / 3 ],
-                        max]
+                        diameter]
     limbs.append(r_hand_coords)
 
-    max = max(get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
+    diameter = max(get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
                 get_distance_between_two_points([landmarks[29].x, landmarks[29].y, landmarks[29].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
                 get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[29].x, landmarks[29].y, landmarks[29].z]))
     l_foot_coords = ['lf', [(landmarks[27].x + landmarks[31].x + landmarks[29].x) / 3,
                             (landmarks[27].y + landmarks[31].y + landmarks[29].y) / 3,
                             (landmarks[27].z + landmarks[31].z + landmarks[29].z) / 3 ],
-                        max]
+                        diameter]
     limbs.append(l_foot_coords)
 
-    max = max(get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
+    diameter = max(get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
                 get_distance_between_two_points([landmarks[32].x, landmarks[32].y, landmarks[32].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
                 get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[32].x, landmarks[32].y, landmarks[32].z]))
     r_foot_coords = ['rf', [(landmarks[28].x + landmarks[32].x + landmarks[30].x) / 3,
                             (landmarks[28].y + landmarks[32].y + landmarks[30].y) / 3,
                             (landmarks[28].z + landmarks[32].z + landmarks[30].z) / 3 ],
-                        max]
+                        diameter]
     limbs.append(r_foot_coords)
     
     return limbs
@@ -126,7 +126,7 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
         # appends {name, 3dcoords, dia, velocity} to limb info
         limb_info.append(limb.append(dist / time_between_frames))
     
-    limb_info.append()
+    limb_info.append(False)
 
     return limb_info
 
@@ -361,7 +361,7 @@ while cap.isOpened():
         landmark_history.append([frame_number, CoM, result.pose_landmarks.landmark, []])  # list struct (frame, CoM, landmarks, limb_info)
         limb_velocity = get_limb_velocity(landmark_history, fps)
         if limb_velocity:
-            landmark_history[-1].append(limb_velocity)
+            landmark_history[3] = (limb_velocity)
         # Add the landmark coordinates to the list and print them
         # write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
 
