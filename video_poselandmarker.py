@@ -21,9 +21,7 @@ if(os.path.exists(output_destination)): # replace dst dir if already exists
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
 os.mkdir(output_destination)
-output_csv1 = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_1.csv')
-output_csv2 = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_2.csv')
-output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
+output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_output_video.mp4')
 
 # UTILS
 def get_distance_between_two_points(a, b):
@@ -103,7 +101,6 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
     # list[x]: name, coords, dia, velocity, 
 
     # make sure there are enough frames in landmark history
-
     limbs_curr = get_limb_coord(landmark_history[-1][2])
 
     if len(landmark_history) < 2:
@@ -136,7 +133,27 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
 
     return limb_info
 
-def check_limb_held(landmark_history, fps): # TODO
+def get_CoM_velocity(landmark_history, fps):
+    if len(landmark_history) < 2:
+        # print("at frame: " + str(landmark_history[-1][0]))
+        # print("there are no previous frames with landmarks")
+        return
+    
+    # make sure gap between current and previous frame (containing landmarks) is less than .5 seconds 
+    time_between_frames = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
+    if time_between_frames > .5:
+        # print("at frame: " + str(landmark_history[-1][0]))
+        # print("there are no previous frames with landmarks that are shorter than .5 seconds prior")
+        return
+    
+    curr_CoM = landmark_history[-1][1][0]
+    prev_CoM = landmark_history[-2][1][0]
+
+    dist = get_distance_between_two_points(list(curr_CoM), list(prev_CoM))
+        # appends {name, 3dcoords, dia, velocity} to limb info
+    return dist / time_between_frames
+
+def check_limb_held(landmark_history, fps): # half TODO
     # how do I get contact points? 
     # stillness aproximates held
     # how to check for stillness?
@@ -298,24 +315,23 @@ def get_force_for_contact_point(contact_points, CoM): # output: list of contact 
         # contact surface: chimneying
 
     result = get_weight_distribution(contact_points, CoM)
-    print("reuslt below")
-    print(result)
+    # print("reuslt below")
+    # print(result)
 
-    print("printing loop below")
+    # print("printing loop below")
 
     for index, contact_point in enumerate(result):
-        print(f"at index {index}: contact_point is")
-        print(contact_point)
+        # print(f"at index {index}: contact_point is")
+        # print(contact_point)
         third_point = (contact_point[1][0], CoM[1], contact_point[1][2]) 
 
         # double check this
         angle = find_angle_threepoints(contact_point[1], CoM, third_point) 
-        force = contact_point[2]/math.cos(angle)
+        force = contact_point[2]/abs(math.cos(angle))
         
         result[index].append(force)
     
     return result
-
 
 def add_torque_to_total_force(contact_points, CoM): # TODO
     # ADD FORCE FROM TORQUE:
@@ -329,51 +345,62 @@ def add_motion_to_force(contact_points, CoM): # TODO
     return 0
 
 def write_landmarks_to_csv(landmarks, frame_number, csv_data, CoM):
-    print(f"Landmark coordinates for frame {frame_number}:")
+    # print(f"Landmark coordinates for frame {frame_number}:")
     # print(landmarks)
     for idx, landmark in enumerate(landmarks):
-        print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
+        # print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
         csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
 
     # ADD CoM TO CSV
-    print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
-    csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
-
-    print("\n")
-
-def write_limbs_to_csv(landmark_history, frame_number, csv_data, CoM):
-    # print(f"frame {frame_number}:")
-    # print(landmarks)
-    for limb in landmark_history[-1][3]:
-        print(f"{limb[0]}: (x: {limb[1][0]}, y: {limb[1][1]}, z: {limb[1][2]})")
-        csv_data.append([frame_number, limb[0], limb[1]]) # [0], limb[1][1], limb[1][2]])
-        if len(limb) > 3:
-            csv_data[-1].append(limb[3])
-        if len(limb) > 4:
-            csv_data[-1].append(limb[4])
-
-    # ADD CoM TO CSV
     # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
-    csv_data.append([frame_number, "CoM", [CoM[0],CoM[1],CoM[2]]])
-
+    csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
 
     # print("\n")
 
-def write_force_to_csv(force_record, frame_number, csv_data, CoM):
-    print(f"frame {frame_number}:")
+def write_velocity_to_csv(landmark_history, csv_data):
+    # print(f"frame {frame_number}:")
     # print(landmarks)
-    print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+
+    # ADD CoM TO CSV
+    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+    csv_data[4].append([landmark_history[-1][0], "CoM"])
+    if len(landmark_history[-1][1]) > 1:
+        csv_data[4][-1].append(landmark_history[-1][1][1])
+
+    print(csv_data[4][-1])
+
+    # print(landmark_history[-1][3][4])
+    for idx, limb in enumerate(landmark_history[-1][3]):
+        # print(f"{limb[0]}: (x: {limb[1][0]}, y: {limb[1][1]}, z: {limb[1][2]})")
+        csv_data[idx].append([landmark_history[-1][0], limb[0]]) # , limb[1]]) # [0], limb[1][1], limb[1][2]])
+        if len(limb) > 3:
+            csv_data[idx][-1].append(limb[3])
+        # if len(limb) > 4:
+        #     csv_data[-1].append(limb[4])
+    # print(csv_data[4][-1])
+
+def write_force_to_csv(force_record, frame_number, csv_data):
+    # print(f"frame {frame_number}:")
+    # print(landmarks)
+    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+
+    # print(force_record)
+
     for limb in force_record:
-        print("  :      raw_dist      |      force w/angle")
-        print(f"{limb[0]}: {limb[2]} | {limb[3]}")
-        csv_data.append([frame_number, limb[0], limb[2], limb[3], limb[1]]) # [0], limb[1][1], limb[1][2]])
+        # print("  :      raw_dist      |      force w/angle")
+        # print(f"{limb[0]}: {limb[2]} | {limb[3]}")
+        if limb[0] == "lh":
+            csv_data[0].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
+        if limb[0] == "rh":
+            csv_data[1].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
+        if limb[0] == "lf":
+            csv_data[2].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
+        if limb[0] == "rf":
+            csv_data[3].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
 
     # ADD CoM TO CSV
     # to comment out
-    csv_data.append([frame_number, "CoM", [CoM[0],CoM[1],CoM[2]]])
 
-
-    print("\n")
 
 
 mp_pose = mp.solutions.pose
@@ -394,8 +421,9 @@ video_out = cv2.VideoWriter(output_video, fourcc, fps, frameSize)
 
 # data for csv
 frame_number = 0
-contact_force_csv = []
-csv_data = []
+force_data = [[],[],[],[]]
+velocity_data = [[],[],[],[],[]]
+landmark_location_data = []
 landmark_history = []
 fps = cap.get(cv2.CAP_PROP_FPS)
 
@@ -421,13 +449,20 @@ while cap.isOpened():
         CoM_coord = (int(CoM[0]*width),int(CoM[1]*height))        
         frame = cv2.circle(frame, CoM_coord, radius=4, color=(0, 255, 0), thickness=-1)
         # add to landmark_history
-        landmark_history.append([frame_number, CoM, result.pose_landmarks.landmark, []])  # list struct (frame, CoM, landmarks, limb_info)
+        landmark_history.append([frame_number, [CoM], result.pose_landmarks.landmark, []])  # list struct (frame, CoM, landmarks, limb_info)
+        
+        CoM_velocity = get_CoM_velocity(landmark_history, fps)
+        if CoM_velocity:
+            landmark_history[-1][1].append(CoM_velocity)
+        
         limb_info = check_limb_held(landmark_history, fps)
         if limb_info:
             landmark_history[-1][3] = limb_info
 
         contact_points = []
 
+
+        # colour held holds
         for limb in limb_info:
             limb_coord = (int(limb[1][0]*width),int(limb[1][1]*height)) 
             if len(limb) > 4:
@@ -436,11 +471,11 @@ while cap.isOpened():
                 continue
             frame = cv2.circle(frame, limb_coord, radius=6, color=(255, 0, 0), thickness=-1)
         # Add the landmark coordinates to the list and print them
-        # write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
 
-        force_data = get_force_for_contact_point(contact_points, CoM)
-        write_force_to_csv(force_data, frame_number, contact_force_csv, CoM)
-        # write_limbs_to_csv(landmark_history, frame_number, csv_data, CoM)
+        frame_force_data = get_force_for_contact_point(contact_points, CoM)
+        write_force_to_csv(frame_force_data, frame_number, force_data)
+        write_velocity_to_csv(landmark_history, velocity_data)
+        write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, landmark_location_data, CoM)
 
     font = cv2.FONT_HERSHEY_SIMPLEX 
     frame = cv2.putText(frame,  
@@ -469,15 +504,65 @@ cap.release()
 cv2.destroyAllWindows()
 
 
-# with open(output_csv1, 'w', newline='') as csvfile:
-#     csv_writer = csv.writer(csvfile)
-#     csv_writer.writerows(landmark_history)
+# making csvs
+csv_collection_path = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_csv_collection')
+os.mkdir(csv_collection_path)
+output_csv_landmark_locations = os.path.join(csv_collection_path , 'lanmark_location.csv')
+output_csv_velocities_lh = os.path.join(csv_collection_path, 'velocities_lh.csv')
+output_csv_velocities_rh = os.path.join(csv_collection_path, 'velocities_rh.csv')
+output_csv_velocities_lf = os.path.join(csv_collection_path, 'velocities_lf.csv')
+output_csv_velocities_rf = os.path.join(csv_collection_path, 'velocities_rf.csv')
+output_csv_velocities_CoM = os.path.join(csv_collection_path, 'velocities_CoM.csv')
 
-with open(output_csv2, 'w', newline='') as csvfile:
+output_csv_force_lh = os.path.join(csv_collection_path , 'force_lh.csv')
+output_csv_force_rh = os.path.join(csv_collection_path , 'force_rh.csv')
+output_csv_force_lf = os.path.join(csv_collection_path , 'force_lf.csv')
+output_csv_force_rf = os.path.join(csv_collection_path , 'force_rf.csv')
+
+with open(output_csv_landmark_locations, 'w', newline='') as csvfile:
     csv_writer = csv.writer(csvfile)
-    csv_writer.writerow(['frame_number', 'limbname', 'limbcoord', 'velocity', 'holdarea'])
-    csv_writer.writerows(csv_data)
-with open(output_csv2, 'w', newline='') as csvfile:
+    csv_writer.writerow(['frame_number', 'name', 'x', 'y', 'z'])
+    csv_writer.writerows(landmark_location_data)
+
+with open(output_csv_velocities_lh, 'w', newline='') as csvfile:
     csv_writer = csv.writer(csvfile)
-    csv_writer.writerow(['frame_number', 'name', 'raw weight dist', 'force applied', 'holdarea'])
-    csv_writer.writerows(contact_force_csv)
+    csv_writer.writerow(['frame_number', 'limbname', 'velocity'])
+    csv_writer.writerows(velocity_data[0])
+with open(output_csv_velocities_rh, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'limbname', 'velocity'])
+    csv_writer.writerows(velocity_data[1])
+with open(output_csv_velocities_lf, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'limbname', 'velocity'])
+    csv_writer.writerows(velocity_data[2])
+with open(output_csv_velocities_rf, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'limbname', 'velocity'])
+    csv_writer.writerows(velocity_data[3])
+
+with open(output_csv_velocities_CoM, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'limbname', 'velocity'])
+    csv_writer.writerows(velocity_data[4])
+
+with open(output_csv_force_lh, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'raw weight dist'])
+    csv_writer.writerows(force_data[0])
+with open(output_csv_force_rh, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'raw weight dist'])
+    csv_writer.writerows(force_data[1])
+with open(output_csv_force_lf, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'raw weight dist'])
+    csv_writer.writerows(force_data[2])
+with open(output_csv_force_rf, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'raw weight dist'])
+    csv_writer.writerows(force_data[3])
+
+# plotting graphs
+graph_collection_path = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0]) + '_graph_collection'
+os.mkdir(graph_collection_path)
