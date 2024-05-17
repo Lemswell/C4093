@@ -21,7 +21,8 @@ if(os.path.exists(output_destination)): # replace dst dir if already exists
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror))
 os.mkdir(output_destination)
-output_csv = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '.csv')
+output_csv1 = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_1.csv')
+output_csv2 = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_2.csv')
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_landmarks.mp4')
 
 # UTILS
@@ -29,7 +30,7 @@ def get_distance_between_two_points(a, b):
     # x,y,z
     # 0,1,2
 
-    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2) + math.pow(a[2] - b[2], 2))
+    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2)) # + math.pow(a[2] - b[2], 2))
     
     return distance
 
@@ -41,9 +42,9 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
     ac = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
 
     # get vector magnitude and normal
-    abmag = math.sqrt(pow(ab[0], 2) + pow(ab[1], 2) + pow(ab[3], 2))
+    abmag = math.sqrt(pow(ab[0], 2) + pow(ab[1], 2) + pow(ab[2], 2))
     abnorm = (ab[0] / abmag, ab[1] / abmag, ab[2] / abmag)
-    acmag = math.sqrt(pow(ac[0], 2) + pow(ac[1], 2) + pow(ac[3], 2))
+    acmag = math.sqrt(pow(ac[0], 2) + pow(ac[1], 2) + pow(ac[2], 2))
     acnorm = (ac[0] / acmag, ac[1] / acmag, ac[2] / acmag)
 
     # calculate dot product
@@ -99,24 +100,30 @@ def get_limb_coord(landmarks): # finds limb coords and a diameter of where the l
 def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of image) per second
     # output
     # indicies: lh, rh, lf, rf
-    # list[x]: name, coords, dia, velocity, is_held
+    # list[x]: name, coords, dia, velocity, 
 
     # make sure there are enough frames in landmark history
+
+    limbs_curr = get_limb_coord(landmark_history[-1][2])
+
     if len(landmark_history) < 2:
-        return
+        # print("at frame: " + str(landmark_history[-1][0]))
+        # print("there are no previous frames with landmarks")
+        return limbs_curr
     
     # make sure gap between current and previous frame (containing landmarks) is less than .5 seconds 
     time_between_frames = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
     if time_between_frames > .5:
-        return
+        # print("at frame: " + str(landmark_history[-1][0]))
+        # print("there are no previous frames with landmarks that are shorter than .5 seconds prior")
+        return limbs_curr
 
     # saving actual landmarks of current frame and previous frame
     limbs_prev = get_limb_coord(landmark_history[-2][2])
-    limbs_curr = get_limb_coord(landmark_history[-1][2])
-
+    
     # a structure for saving limb information
     # indicies: lh, rh, lf, rf
-    # list[x]: name, 3dcoords, dia, velocity, is_held
+    # list[x]: name, 3dcoords, dia, velocity,
     # where   {name, 3dcoords, dia}                      come from get_limb_coord func
     limb_info = []
 
@@ -124,9 +131,8 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
         # gets distance two of the same limb[idx] at different frames 
         dist = get_distance_between_two_points(limbs_prev[idx][1], limbs_curr[idx][1])
         # appends {name, 3dcoords, dia, velocity} to limb info
-        limb_info.append(limb.append(dist / time_between_frames))
-    
-    limb_info.append(False)
+        limb.append(dist / time_between_frames)
+        limb_info.append(limb)
 
     return limb_info
 
@@ -145,19 +151,30 @@ def check_limb_held(landmark_history, fps): # TODO
     # test these points with testing method for stillness refered to above
 
     
-    velocity_lim = .2 # arbitrary value (TODO)
+    velocity_lim = .1 # arbitrary value (TODO)
     limb_info = get_limb_velocity(landmark_history, fps)
+    if len(limb_info[0]) == 3:
+        return limb_info
 
-    for limb in limb_info:
-        if limb[3] < velocity_lim:
-            return
+    
 
+    # identify if helf via length
+    for index, limb in enumerate(limb_info):
+        if len(landmark_history[-2][3][index]) > 4: # check hold status of previous frame is true
+            if get_distance_between_two_points(limb[1], landmark_history[-2][3][index][4][0]) < landmark_history[-2][3][index][4][1]: # if still within area of previous holding area
+                if limb[3] <= landmark_history[-2][3][index][4][2]: # if curr velocity is less than prev recorded velocity when "held"
+                    limb.append([limb[1], limb[2], limb[3]])
+                    continue
+                limb.append(landmark_history[-2][3][index][4])
+                continue
+        if limb[3] <= velocity_lim:
+            limb.append([limb[1], limb[2], limb[3]]) # appends: {coordinates}, radius, velocity
 
+    # returns list of 4 limbs, each limb is either has information in the form of a list that has either 4 or 5 elements
+    # if the list has 5 elements then it is held, these extra two elements show an original diameter and location
+    # name, coords, dia(xyz), vel, marker(coords, dia, vel) 
 
-
-
-
-    return
+    return limb_info
 
 # IDENTIFTING ACTING FORCES
 def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list but ehh)
@@ -237,7 +254,7 @@ def get_com_from_landmarks(landmarks): # output: tuple (prob shoulda been list b
     
     return com
 
-def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is given as to a still subject.
+def get_weight_distribution(contact_points, CoM): # output: list of contact points, showing [name, coords, force]
     # FINDING ACTUAL DISTRIBUTION: the further away a contact_point is from CoM x and z, the less responsible it is for holding the weight (counteracting the force of gravity). 
         # y value displacement should either have very little to no influence on weight dist (maybe closer horizontally means slightly less weight distributed to it).
         # the weight distribution should be based on the difference between contact point distances from the CoM (comparing CoM-contact_point[0] to CoM-contact_point[1] vectors.
@@ -249,26 +266,28 @@ def get_weight_distribution(contact_points, CoM): # placeholder weight 1 is give
     # ASSUME contact_points is list of list
 
     # get distance between contact_points and CoM (x and z values)
-    distance_values = []
+    result = []
     for contact_point in contact_points:
         # distance betwen com and contact_point
-        distance = math.sqrt(pow(contact_point[0] - CoM[0], 2) + pow(contact_point[2] - CoM[2], 2))
-        distance_values.append(distance)
+        result.append([contact_point[0], contact_point[1], math.sqrt(pow(contact_point[1][0] - CoM[0], 2) + pow(contact_point[1][2] - CoM[2], 2))])
 
+    # [name, [coords], distance]
     # inverses distance values
-    for distance in distance_values:
-        distance = 1/distance
+    for distance in result:
+        distance[2] = 1/distance[2]
 
     # turn inverse distance values to percentage (weight distribution) and add to return value
-    contact_point_weight_distribution = []
-    sum_of_inverse_distances = sum(distance_values)
-    for inverse_distance in distance_values:
-        weight_responsiblity = inverse_distance/sum_of_inverse_distances
-        contact_point_weight_distribution.append(weight_responsiblity)
+    sum_of_inverse_distances = 0 
+    for dist in result:
+        sum_of_inverse_distances += dist[2]
+    for inverse_distance in result:
+        # convert inverse distance to weight dist
+        inverse_distance[2] = inverse_distance[2]/sum_of_inverse_distances
 
-    return contact_point_weight_distribution
+    return result
 
-def get_force_for_contact_point(contact_points, CoM): # taking into consideratio the direction of force applied 
+def get_force_for_contact_point(contact_points, CoM): # output: list of contact points, showing [name, coords, raw distribution, force after angle consideration]
+    # taking into consideratio the direction of force applied 
     # ADDING EXTRA FORCE BASED ON FORCE DIRECTION: produce a vector for each point of contact 
         # assume contact points below CoM push weight up by pushing away or CoM, whereas points above pull weight up by pulling towards (trunk or CoM)
         # trunk or CoM depends on if contact point is placed between joining trunk landmark and CoM, if so direction is in relation to CoM, trunk if not.
@@ -278,17 +297,25 @@ def get_force_for_contact_point(contact_points, CoM): # taking into consideratio
         # Friction: imagine scenario where shoulder width square prism volume, to hold oneself up, you'd need to squeeze the volume to make use of the friction. 
         # contact surface: chimneying
 
-    weight_dist = get_weight_distribution(contact_points)
-    
-    result = []
+    result = get_weight_distribution(contact_points, CoM)
+    print("reuslt below")
+    print(result)
 
-    for index, contact_point in enumerate(contact_points):
-        third_point = (contact_point[0], CoM[1], contact_point[2]) 
-        angle = find_angle_threepoints(contact_point[:3], CoM, third_point)
-        force = weight_dist[index]/math.cos[angle]
-        result.append(force)
+    print("printing loop below")
+
+    for index, contact_point in enumerate(result):
+        print(f"at index {index}: contact_point is")
+        print(contact_point)
+        third_point = (contact_point[1][0], CoM[1], contact_point[1][2]) 
+
+        # double check this
+        angle = find_angle_threepoints(contact_point[1], CoM, third_point) 
+        force = contact_point[2]/math.cos(angle)
+        
+        result[index].append(force)
     
     return result
+
 
 def add_torque_to_total_force(contact_points, CoM): # TODO
     # ADD FORCE FROM TORQUE:
@@ -314,6 +341,41 @@ def write_landmarks_to_csv(landmarks, frame_number, csv_data, CoM):
 
     print("\n")
 
+def write_limbs_to_csv(landmark_history, frame_number, csv_data, CoM):
+    # print(f"frame {frame_number}:")
+    # print(landmarks)
+    for limb in landmark_history[-1][3]:
+        print(f"{limb[0]}: (x: {limb[1][0]}, y: {limb[1][1]}, z: {limb[1][2]})")
+        csv_data.append([frame_number, limb[0], limb[1]]) # [0], limb[1][1], limb[1][2]])
+        if len(limb) > 3:
+            csv_data[-1].append(limb[3])
+        if len(limb) > 4:
+            csv_data[-1].append(limb[4])
+
+    # ADD CoM TO CSV
+    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+    csv_data.append([frame_number, "CoM", [CoM[0],CoM[1],CoM[2]]])
+
+
+    # print("\n")
+
+def write_force_to_csv(force_record, frame_number, csv_data, CoM):
+    print(f"frame {frame_number}:")
+    # print(landmarks)
+    print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
+    for limb in force_record:
+        print("  :      raw_dist      |      force w/angle")
+        print(f"{limb[0]}: {limb[2]} | {limb[3]}")
+        csv_data.append([frame_number, limb[0], limb[2], limb[3], limb[1]]) # [0], limb[1][1], limb[1][2]])
+
+    # ADD CoM TO CSV
+    # to comment out
+    csv_data.append([frame_number, "CoM", [CoM[0],CoM[1],CoM[2]]])
+
+
+    print("\n")
+
+
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils 
 pose = mp_pose.Pose()
@@ -332,7 +394,8 @@ video_out = cv2.VideoWriter(output_video, fourcc, fps, frameSize)
 
 # data for csv
 frame_number = 0
-# csv_data = []
+contact_force_csv = []
+csv_data = []
 landmark_history = []
 fps = cap.get(cv2.CAP_PROP_FPS)
 
@@ -359,16 +422,39 @@ while cap.isOpened():
         frame = cv2.circle(frame, CoM_coord, radius=4, color=(0, 255, 0), thickness=-1)
         # add to landmark_history
         landmark_history.append([frame_number, CoM, result.pose_landmarks.landmark, []])  # list struct (frame, CoM, landmarks, limb_info)
-        limb_velocity = get_limb_velocity(landmark_history, fps)
-        if limb_velocity:
-            landmark_history[3] = (limb_velocity)
+        limb_info = check_limb_held(landmark_history, fps)
+        if limb_info:
+            landmark_history[-1][3] = limb_info
+
+        contact_points = []
+
+        for limb in limb_info:
+            limb_coord = (int(limb[1][0]*width),int(limb[1][1]*height)) 
+            if len(limb) > 4:
+                frame = cv2.circle(frame, limb_coord, radius=6, color=(0, 255, 255), thickness=-1)
+                contact_points.append([limb[0], limb[1]])
+                continue
+            frame = cv2.circle(frame, limb_coord, radius=6, color=(255, 0, 0), thickness=-1)
         # Add the landmark coordinates to the list and print them
         # write_landmarks_to_csv(result.pose_landmarks.landmark, frame_number, csv_data, CoM)
+
+        force_data = get_force_for_contact_point(contact_points, CoM)
+        write_force_to_csv(force_data, frame_number, contact_force_csv, CoM)
+        # write_limbs_to_csv(landmark_history, frame_number, csv_data, CoM)
+
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    frame = cv2.putText(frame,  
+                str(frame_number),  
+                (50, 50),  
+                font, 1,  
+                (0, 255, 255),  
+                2,  
+                cv2.LINE_4) 
 
     # Display the frame
     window_resized = cv2.resize(frame, (int(width/2.3), int(height/2.3))) # Resize image
     cv2.imshow('MediaPipe Pose', window_resized)
-    
+
     # save frame to exported video
     video_out.write(frame)
     
@@ -383,8 +469,15 @@ cap.release()
 cv2.destroyAllWindows()
 
 
-with open(output_csv, 'w', newline='') as csvfile:
+# with open(output_csv1, 'w', newline='') as csvfile:
+#     csv_writer = csv.writer(csvfile)
+#     csv_writer.writerows(landmark_history)
+
+with open(output_csv2, 'w', newline='') as csvfile:
     csv_writer = csv.writer(csvfile)
-    # csv_writer.writerow(['frame_number', 'landmark', 'x', 'y', 'z'])
-    # csv_writer.writerows(csv_data)
-    csv_writer.writerows(landmark_history)
+    csv_writer.writerow(['frame_number', 'limbname', 'limbcoord', 'velocity', 'holdarea'])
+    csv_writer.writerows(csv_data)
+with open(output_csv2, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(['frame_number', 'name', 'raw weight dist', 'force applied', 'holdarea'])
+    csv_writer.writerows(contact_force_csv)
