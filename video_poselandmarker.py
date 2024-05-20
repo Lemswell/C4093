@@ -56,14 +56,16 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
 # CHECK CONTACT POINT HELD
 def get_limb_coord(landmarks): # finds limb coords and a diameter of where the limb is in
     limbs = []
+    # diameter value is given as a reference to see if a limb is still holding onto a hold (this should be made redundant once object detection is introduced)
 
     diameter = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
                 get_distance_between_two_points([landmarks[19].x, landmarks[19].y, landmarks[19].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
                 get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[19].x, landmarks[19].y, landmarks[19].z]))
-    l_hand_coords = ['lh', [(landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
-                            (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
-                            (landmarks[15].z + landmarks[17].z + landmarks[19].z) / 3 ],
-                        diameter]
+    l_hand_coords = ['lh', 
+                        [(landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
+                        (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
+                        (landmarks[15].z + landmarks[17].z + landmarks[19].z) / 3 ],
+                    diameter]
     limbs.append(l_hand_coords)
 
     diameter = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
@@ -169,6 +171,9 @@ def check_limb_held(landmark_history, fps): # half TODO
 
     
     velocity_lim = .1 # arbitrary value (TODO)
+    # make velocity limit proportional to body length
+
+
     limb_info = get_limb_velocity(landmark_history, fps)
     if len(limb_info[0]) == 3:
         return limb_info
@@ -280,8 +285,6 @@ def get_weight_distribution(contact_points, CoM): # output: list of contact poin
         # contact surface: chimneying
         # front lever: should it account for additional force applied during the front lever (where CoM and contact_points are aligned but trunk landmark isn't)
 
-    # ASSUME contact_points is list of list
-
     # get distance between contact_points and CoM (x and z values)
     result = []
     for contact_point in contact_points:
@@ -315,17 +318,10 @@ def get_force_for_contact_point(contact_points, CoM): # output: list of contact 
         # contact surface: chimneying
 
     result = get_weight_distribution(contact_points, CoM)
-    # print("reuslt below")
-    # print(result)
-
-    # print("printing loop below")
 
     for index, contact_point in enumerate(result):
-        # print(f"at index {index}: contact_point is")
-        # print(contact_point)
         third_point = (contact_point[1][0], CoM[1], contact_point[1][2]) 
 
-        # double check this
         angle = find_angle_threepoints(contact_point[1], CoM, third_point) 
         force = contact_point[2]/abs(math.cos(angle))
         
@@ -337,58 +333,35 @@ def add_torque_to_total_force(contact_points, CoM): # TODO
     # ADD FORCE FROM TORQUE:
         # should be more applicable when contact points are not on opposite sides (x, z) of CoM
         # equation:
-    return 0
+    return
         
 def add_motion_to_force(contact_points, CoM): # TODO
     # ADD FORCE FOR MOVEMENT:
         # TODO account for velocity considering previous *active* frames
-    return 0
+    return
 
 def write_landmarks_to_csv(landmarks, frame_number, csv_data, CoM):
-    # print(f"Landmark coordinates for frame {frame_number}:")
-    # print(landmarks)
     for idx, landmark in enumerate(landmarks):
-        # print(f"{mp_pose.PoseLandmark(idx).name}: (x: {landmark.x}, y: {landmark.y}, z: {landmark.z})")
         csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
 
     # ADD CoM TO CSV
-    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
     csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
 
-    # print("\n")
 
 def write_velocity_to_csv(landmark_history, csv_data):
-    # print(f"frame {frame_number}:")
-    # print(landmarks)
-
     # ADD CoM TO CSV
-    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
-    csv_data[4].append([landmark_history[-1][0], "CoM"])
+    # csv_data[4].append([landmark_history[-1][0], "CoM"])
     if len(landmark_history[-1][1]) > 1:
-        csv_data[4][-1].append(landmark_history[-1][1][1])
-
-    print(csv_data[4][-1])
-
-    # print(landmark_history[-1][3][4])
+        csv_data[4].append([landmark_history[-1][0], "CoM", landmark_history[-1][1][1]])
     for idx, limb in enumerate(landmark_history[-1][3]):
-        # print(f"{limb[0]}: (x: {limb[1][0]}, y: {limb[1][1]}, z: {limb[1][2]})")
-        csv_data[idx].append([landmark_history[-1][0], limb[0]]) # , limb[1]]) # [0], limb[1][1], limb[1][2]])
         if len(limb) > 3:
-            csv_data[idx][-1].append(limb[3])
+            csv_data[idx].append([landmark_history[-1][0], limb[0], limb[3]]) # , limb[1]]) # [0], limb[1][1], limb[1][2]])
         # if len(limb) > 4:
         #     csv_data[-1].append(limb[4])
-    # print(csv_data[4][-1])
 
 def write_force_to_csv(force_record, frame_number, csv_data):
-    # print(f"frame {frame_number}:")
-    # print(landmarks)
-    # print(f"CENTER_OF_MASS: (x: {CoM[0]}, y: {CoM[1]}, z: {CoM[2]})")
-
-    # print(force_record)
 
     for limb in force_record:
-        # print("  :      raw_dist      |      force w/angle")
-        # print(f"{limb[0]}: {limb[2]} | {limb[3]}")
         if limb[0] == "lh":
             csv_data[0].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
         if limb[0] == "rh":
@@ -424,6 +397,7 @@ frame_number = 0
 force_data = [[],[],[],[]]
 velocity_data = [[],[],[],[],[]]
 landmark_location_data = []
+limb_location_data = [] # TODO
 landmark_history = []
 fps = cap.get(cv2.CAP_PROP_FPS)
 
@@ -563,6 +537,101 @@ with open(output_csv_force_rf, 'w', newline='') as csvfile:
     csv_writer.writerow(['frame_number', 'raw weight dist'])
     csv_writer.writerows(force_data[3])
 
-# plotting graphs
 graph_collection_path = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0]) + '_graph_collection'
 os.mkdir(graph_collection_path)
+output_plot_velocities_lh = os.path.join(graph_collection_path, 'velocities_lh.png')
+output_plot_velocities_rh = os.path.join(graph_collection_path, 'velocities_rh.png')
+output_plot_velocities_lf = os.path.join(graph_collection_path, 'velocities_lf.png')
+output_plot_velocities_rf = os.path.join(graph_collection_path, 'velocities_rf.png')
+output_plot_velocities_CoM = os.path.join(graph_collection_path, 'velocities_CoM.png')
+
+output_plot_d_lh = os.path.join(graph_collection_path , 'distribution_lh.png')
+output_plot_d_rh = os.path.join(graph_collection_path , 'distribution_rh.png')
+output_plot_d_lf = os.path.join(graph_collection_path , 'distribution_lf.png')
+output_plot_d_rf = os.path.join(graph_collection_path , 'distribution_rf.png')
+output_plot_force_lh = os.path.join(graph_collection_path , 'force_lh.png')
+output_plot_force_rh = os.path.join(graph_collection_path , 'force_rh.png')
+output_plot_force_lf = os.path.join(graph_collection_path , 'force_lf.png')
+output_plot_force_rf = os.path.join(graph_collection_path , 'force_rf.png')
+
+import matplotlib.pyplot as plt
+import numpy as np
+import copy
+
+# populate missing frames with no value with np.nan
+def populate_missing(list_rangep, list_valuep):
+    # if len(list1) < 2 : return list1
+
+    list_range = copy.deepcopy(list_rangep)
+    list_value = copy.deepcopy(list_valuep)
+
+    num = list_range[0]
+    i = -1
+
+    while num < list_range[-1]:
+        num += 1
+        i += 1
+
+        if num in list_range: continue
+
+        if i < len(list_range) - 1:
+            list_range.insert(i + 1, num)
+            list_value.insert(i + 1, np.nan)
+        else:
+            list_range.append(num) 
+            list_value.append(np.nan)
+    
+    return [list_range, list_value]
+
+
+
+plt.plot([column[0] for column in velocity_data[0]], [column[2] for column in velocity_data[0]])
+plt.savefig(output_plot_velocities_lh)
+plt.clf()
+plt.plot([column[0] for column in velocity_data[1]], [column[2] for column in velocity_data[1]])
+plt.savefig(output_plot_velocities_rh)
+plt.clf()
+plt.plot([column[0] for column in velocity_data[2]], [column[2] for column in velocity_data[2]])
+plt.savefig(output_plot_velocities_lf)
+plt.clf()
+plt.plot([column[0] for column in velocity_data[3]], [column[2] for column in velocity_data[3]])
+plt.savefig(output_plot_velocities_rf)
+plt.clf()
+plt.plot([column[0] for column in velocity_data[4]], [column[2] for column in velocity_data[4]])
+plt.savefig(output_plot_velocities_CoM)
+
+
+plt.clf()
+data = populate_missing([column[0] for column in force_data[0]], [column[2] for column in force_data[0]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_d_lh)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[1]], [column[2] for column in force_data[1]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_d_rh)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[2]], [column[2] for column in force_data[2]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_d_lf)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[3]], [column[2] for column in force_data[3]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_d_rf)
+
+
+plt.clf()
+data = populate_missing([column[0] for column in force_data[0]], [column[3] for column in force_data[0]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_force_lh)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[1]], [column[3] for column in force_data[1]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_force_rh)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[2]], [column[3] for column in force_data[2]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_force_lf)
+plt.clf()
+data = populate_missing([column[0] for column in force_data[3]], [column[3] for column in force_data[3]])
+plt.plot(data[0], data[1])
+plt.savefig(output_plot_force_rf)
