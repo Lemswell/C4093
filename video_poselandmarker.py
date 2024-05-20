@@ -24,9 +24,10 @@ os.mkdir(output_destination)
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_output_video.mp4')
 
 # UTILS
-def get_distance_between_two_points(a, b):
+def get_distance_between_two_points(a, b): # TODO implement 3d value
     # x,y,z
     # 0,1,2
+ 
 
     distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2)) # + math.pow(a[2] - b[2], 2))
     
@@ -137,15 +138,11 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
 
 def get_CoM_velocity(landmark_history, fps):
     if len(landmark_history) < 2:
-        # print("at frame: " + str(landmark_history[-1][0]))
-        # print("there are no previous frames with landmarks")
         return
     
     # make sure gap between current and previous frame (containing landmarks) is less than .5 seconds 
     time_between_frames = (landmark_history[-1][0] - landmark_history[-2][0]) / fps
     if time_between_frames > .5:
-        # print("at frame: " + str(landmark_history[-1][0]))
-        # print("there are no previous frames with landmarks that are shorter than .5 seconds prior")
         return
     
     curr_CoM = landmark_history[-1][1][0]
@@ -155,7 +152,7 @@ def get_CoM_velocity(landmark_history, fps):
         # appends {name, 3dcoords, dia, velocity} to limb info
     return dist / time_between_frames
 
-def check_limb_held(landmark_history, fps): # half TODO
+def check_limb_held(landmark_history, fps): # TODO
     # how do I get contact points? 
     # stillness aproximates held
     # how to check for stillness?
@@ -372,9 +369,6 @@ def write_force_to_csv(force_record, frame_number, csv_data):
             csv_data[3].append([frame_number, limb[0], limb[2], limb[3]]) #, limb[1]]) # [0], limb[1][1], limb[1][2]])
 
     # ADD CoM TO CSV
-    # to comment out
-
-
 
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils 
