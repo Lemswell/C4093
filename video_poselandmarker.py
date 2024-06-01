@@ -24,12 +24,21 @@ os.mkdir(output_destination)
 output_video = os.path.join(output_destination, os.path.splitext(os.path.basename(input_source))[0] + '_output_video.mp4')
 
 # UTILS
-def get_distance_between_two_points(a, b): # TODO implement 3d value
+def get_distance_between_two_points(a, b, x_y_scaler): # TODO implement 3d value
     # x,y,z
     # 0,1,2
  
 
-    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1] - b[1], 2)) # + math.pow(a[2] - b[2], 2))
+    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1]*x_y_scaler - b[1]*x_y_scaler, 2)) # + math.pow(a[2] - b[2], 2))
+    # The last part is commented out because moving reference point for z counts as moving the limb with this interpretation.
+    return distance
+
+def get_skull(a, b, x_y_scaler): # version of distance formula that involves normalized z axis
+    # x,y,z
+    # 0,1,2
+ 
+
+    distance = math.sqrt(math.pow(a[0] - b[0], 2) + math.pow(a[1]*x_y_scaler - b[1]*x_y_scaler, 2) + math.pow(a[2] - b[2], 2))
     
     return distance
 
@@ -55,13 +64,13 @@ def find_angle_threepoints(a, b, c): # given three 3d points a, b, c. find the a
     return angle
 
 # CHECK CONTACT POINT HELD
-def get_limb_coord(landmarks): # finds limb coords and a diameter of where the limb is in
+def get_limb_coord(landmarks, x_y_scaler): # finds limb coords and a diameter of where the limb is in
     limbs = []
     # diameter value is given as a reference to see if a limb is still holding onto a hold (this should be made redundant once object detection is introduced)
 
-    diameter = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
-                get_distance_between_two_points([landmarks[19].x, landmarks[19].y, landmarks[19].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z]),
-                get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[19].x, landmarks[19].y, landmarks[19].z]))
+    diameter = max(get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[19].x, landmarks[19].y, landmarks[19].z], [landmarks[17].x, landmarks[17].y, landmarks[17].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[15].x, landmarks[15].y, landmarks[15].z], [landmarks[19].x, landmarks[19].y, landmarks[19].z], x_y_scaler))
     l_hand_coords = ['lh', 
                         [(landmarks[15].x + landmarks[17].x + landmarks[19].x) / 3,
                         (landmarks[15].y + landmarks[17].y + landmarks[19].y) / 3,
@@ -69,27 +78,27 @@ def get_limb_coord(landmarks): # finds limb coords and a diameter of where the l
                     diameter]
     limbs.append(l_hand_coords)
 
-    diameter = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
-                get_distance_between_two_points([landmarks[20].x, landmarks[20].y, landmarks[20].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z]),
-                get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[20].x, landmarks[20].y, landmarks[20].z]))
+    diameter = max(get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[20].x, landmarks[20].y, landmarks[20].z], [landmarks[18].x, landmarks[18].y, landmarks[18].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[16].x, landmarks[16].y, landmarks[16].z], [landmarks[20].x, landmarks[20].y, landmarks[20].z], x_y_scaler))
     r_hand_coords = ['rh', [(landmarks[16].x + landmarks[18].x + landmarks[20].x) / 3,
                             (landmarks[16].y + landmarks[18].y + landmarks[20].y) / 3,
                             (landmarks[16].z + landmarks[18].z + landmarks[20].z) / 3 ],
                         diameter]
     limbs.append(r_hand_coords)
 
-    diameter = max(get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
-                get_distance_between_two_points([landmarks[29].x, landmarks[29].y, landmarks[29].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z]),
-                get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[29].x, landmarks[29].y, landmarks[29].z]))
+    diameter = max(get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[29].x, landmarks[29].y, landmarks[29].z], [landmarks[31].x, landmarks[31].y, landmarks[31].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[27].x, landmarks[27].y, landmarks[27].z], [landmarks[29].x, landmarks[29].y, landmarks[29].z], x_y_scaler))
     l_foot_coords = ['lf', [(landmarks[27].x + landmarks[31].x + landmarks[29].x) / 3,
                             (landmarks[27].y + landmarks[31].y + landmarks[29].y) / 3,
                             (landmarks[27].z + landmarks[31].z + landmarks[29].z) / 3 ],
                         diameter]
     limbs.append(l_foot_coords)
 
-    diameter = max(get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
-                get_distance_between_two_points([landmarks[32].x, landmarks[32].y, landmarks[32].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z]),
-                get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[32].x, landmarks[32].y, landmarks[32].z]))
+    diameter = max(get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[32].x, landmarks[32].y, landmarks[32].z], [landmarks[30].x, landmarks[30].y, landmarks[30].z], x_y_scaler),
+                get_distance_between_two_points([landmarks[28].x, landmarks[28].y, landmarks[28].z], [landmarks[32].x, landmarks[32].y, landmarks[32].z], x_y_scaler))
     r_foot_coords = ['rf', [(landmarks[28].x + landmarks[32].x + landmarks[30].x) / 3,
                             (landmarks[28].y + landmarks[32].y + landmarks[30].y) / 3,
                             (landmarks[28].z + landmarks[32].z + landmarks[30].z) / 3 ],
@@ -98,13 +107,15 @@ def get_limb_coord(landmarks): # finds limb coords and a diameter of where the l
     
     return limbs
 
-def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of image) per second
+def get_limb_velocity(landmark_history, fps, x_y_scaler): # finds velocity as (portion of image) per second
     # output
     # indicies: lh, rh, lf, rf
     # list[x]: name, coords, dia, velocity, 
 
     # make sure there are enough frames in landmark history
-    limbs_curr = get_limb_coord(landmark_history[-1][2])
+    limbs_curr = get_limb_coord(landmark_history[-1][2], x_y_scaler)
+
+    skull = get_skull([landmark_history[-1][2][7].x, landmark_history[-1][2][7].y, landmark_history[-1][2][7].z], [landmark_history[-1][2][8].x, landmark_history[-1][2][8].y, landmark_history[-1][2][8].z], x_y_scaler)
 
     if len(landmark_history) < 2:
         # print("at frame: " + str(landmark_history[-1][0]))
@@ -119,7 +130,7 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
         return limbs_curr
 
     # saving actual landmarks of current frame and previous frame
-    limbs_prev = get_limb_coord(landmark_history[-2][2])
+    limbs_prev = get_limb_coord(landmark_history[-2][2], x_y_scaler)
     
     # a structure for saving limb information
     # indicies: lh, rh, lf, rf
@@ -129,14 +140,14 @@ def get_limb_velocity(landmark_history, fps): # finds velocity as (portion of im
 
     for idx, limb in enumerate(limbs_curr): # cycles through indicies (lh, rh, lf, rf)
         # gets distance two of the same limb[idx] at different frames 
-        dist = get_distance_between_two_points(limbs_prev[idx][1], limbs_curr[idx][1])
+        dist = get_distance_between_two_points(limbs_prev[idx][1], limbs_curr[idx][1], x_y_scaler)
         # appends {name, 3dcoords, dia, velocity} to limb info
-        limb.append(dist / time_between_frames)
+        limb.append((dist / skull) / time_between_frames)
         limb_info.append(limb)
 
     return limb_info
 
-def get_CoM_velocity(landmark_history, fps):
+def get_CoM_velocity(landmark_history, fps, x_y_scaler):
     if len(landmark_history) < 2:
         return
     
@@ -145,14 +156,15 @@ def get_CoM_velocity(landmark_history, fps):
     if time_between_frames > .5:
         return
     
+    skull = get_skull([landmark_history[-1][2][7].x, landmark_history[-1][2][7].y, landmark_history[-1][2][7].z], [landmark_history[-1][2][8].x, landmark_history[-1][2][8].y, landmark_history[-1][2][8].z], x_y_scaler)
     curr_CoM = landmark_history[-1][1][0]
     prev_CoM = landmark_history[-2][1][0]
 
-    dist = get_distance_between_two_points(list(curr_CoM), list(prev_CoM))
+    dist = get_distance_between_two_points(list(curr_CoM), list(prev_CoM), x_y_scaler)
         # appends {name, 3dcoords, dia, velocity} to limb info
-    return dist / time_between_frames
+    return (dist / skull) / time_between_frames
 
-def check_limb_held(landmark_history, fps): # TODO
+def check_limb_held(landmark_history, fps, x_y_scaler): # TODO
     # how do I get contact points? 
     # stillness aproximates held
     # how to check for stillness?
@@ -167,11 +179,11 @@ def check_limb_held(landmark_history, fps): # TODO
     # test these points with testing method for stillness refered to above
 
     
-    velocity_lim = .1 # arbitrary value (TODO)
+    velocity_lim = 2 # arbitrary value (TODO)
     # make velocity limit proportional to body length
 
 
-    limb_info = get_limb_velocity(landmark_history, fps)
+    limb_info = get_limb_velocity(landmark_history, fps, x_y_scaler)
     if len(limb_info[0]) == 3:
         return limb_info
 
@@ -180,7 +192,7 @@ def check_limb_held(landmark_history, fps): # TODO
     # identify if helf via length
     for index, limb in enumerate(limb_info):
         if len(landmark_history[-2][3][index]) > 4: # check hold status of previous frame is true
-            if get_distance_between_two_points(limb[1], landmark_history[-2][3][index][4][0]) < landmark_history[-2][3][index][4][1]: # if still within area of previous holding area
+            if get_distance_between_two_points(limb[1], landmark_history[-2][3][index][4][0], x_y_scaler) < landmark_history[-2][3][index][4][1]*1.5: # if still within area of previous holding area
                 if limb[3] <= landmark_history[-2][3][index][4][2]: # if curr velocity is less than prev recorded velocity when "held"
                     limb.append([limb[1], limb[2], limb[3]])
                     continue
@@ -337,13 +349,13 @@ def add_motion_to_force(contact_points, CoM): # TODO
         # TODO account for velocity considering previous *active* frames
     return
 
+#OUTPUT
 def write_landmarks_to_csv(landmarks, frame_number, csv_data, CoM):
     for idx, landmark in enumerate(landmarks):
         csv_data.append([frame_number, mp_pose.PoseLandmark(idx).name, landmark.x, landmark.y, landmark.z])
 
     # ADD CoM TO CSV
     csv_data.append([frame_number, "CENTER_OF_MASS", CoM[0], CoM[1], CoM[2]])
-
 
 def write_velocity_to_csv(landmark_history, csv_data):
     # ADD CoM TO CSV
@@ -394,10 +406,12 @@ landmark_location_data = []
 limb_location_data = [] # TODO
 landmark_history = []
 fps = cap.get(cv2.CAP_PROP_FPS)
+x_y_scaler = 0
 
 while cap.isOpened():
     width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float `width`
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float `height`
+    x_y_scaler = height/width
     ret, frame = cap.read()
     if not ret:
         break
@@ -419,11 +433,11 @@ while cap.isOpened():
         # add to landmark_history
         landmark_history.append([frame_number, [CoM], result.pose_landmarks.landmark, []])  # list struct (frame, CoM, landmarks, limb_info)
         
-        CoM_velocity = get_CoM_velocity(landmark_history, fps)
+        CoM_velocity = get_CoM_velocity(landmark_history, fps, x_y_scaler)
         if CoM_velocity:
             landmark_history[-1][1].append(CoM_velocity)
         
-        limb_info = check_limb_held(landmark_history, fps)
+        limb_info = check_limb_held(landmark_history, fps, x_y_scaler)
         if limb_info:
             landmark_history[-1][3] = limb_info
 
